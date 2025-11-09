@@ -85,7 +85,7 @@ export function VetFiltersModal({ isOpen, onClose, onApplyFilters }: VetFiltersM
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
           className="absolute inset-0 z-50"
         >
-          <div className="h-full gradient-bg">
+          <div className="h-full gradient-bg flex flex-col">
             {/* Back Button */}
             <div className="absolute top-4 left-4 z-20">
               <button
@@ -97,7 +97,7 @@ export function VetFiltersModal({ isOpen, onClose, onApplyFilters }: VetFiltersM
             </div>
 
             {/* Scrollable Content */}
-            <div className="overflow-y-auto pb-4">
+            <div className="flex-1 overflow-y-auto">
               {/* Header */}
               <div className="px-6 pt-16 pb-4">
                 <h1 className="text-white mb-2">Filters</h1>
@@ -228,7 +228,7 @@ export function VetFiltersModal({ isOpen, onClose, onApplyFilters }: VetFiltersM
                 </div>
 
                 {/* Action Buttons */}
-                <div className="pt-2">
+                <div className="pt-2 pb-6">
                   <div className="flex gap-3">
                     <button
                       onClick={handleClearAll}
