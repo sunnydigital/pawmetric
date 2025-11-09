@@ -75,7 +75,7 @@ export function ProfileScreenCalm({ onNavigate }: ProfileScreenCalmProps) {
   };
 
   return (
-    <div className="min-h-full gradient-bg pb-24">
+    <div className="min-h-full gradient-bg pb-4">
       {/* Header */}
       <div className="px-6 pt-16 pb-8">
         <h1 className="text-white mb-2 font-bold tracking-tight">Profile</h1>

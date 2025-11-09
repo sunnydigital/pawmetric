@@ -16,6 +16,9 @@ import { OnboardingCarousel } from "./components/onboarding-carousel";
 import { LoginScreen } from "./components/login-screen";
 import { PetProfileSetup } from "./components/pet-profile-setup";
 import { BottomNavCalm } from "./components/bottom-nav-calm";
+import { DocumentScannerCamera } from "./components/document-scanner-camera";
+import { DocumentScanResults } from "./components/document-scan-results";
+import { VetFiltersScreen } from "./components/vet-filters-screen";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { DarkModeProvider } from "./components/dark-mode-context";
@@ -31,12 +34,15 @@ type Screen =
   | "vet-chat"
   | "vet-directory"
   | "vet-location"
+  | "vet-filters"
   | "log-meal"
   | "log-walk"
   | "reports"
   | "profile"
   | "meal-scanner"
-  | "meal-scan-results";
+  | "meal-scan-results"
+  | "document-scanner"
+  | "document-scan-results";
 
 type MainTab = "home" | "scans" | "vet" | "reports" | "profile";
 
@@ -74,7 +80,13 @@ export default function App() {
       setCurrentScreen("health-check");
     } else if (currentScreen === "scan-results") {
       setCurrentScreen("health-check");
+    } else if (currentScreen === "document-scanner") {
+      setCurrentScreen("health-check");
+    } else if (currentScreen === "document-scan-results") {
+      setCurrentScreen("document-scanner");
     } else if (currentScreen === "vet-location") {
+      setCurrentScreen("vet-directory");
+    } else if (currentScreen === "vet-filters") {
       setCurrentScreen("vet-directory");
     } else if (
       currentScreen === "vet-chat" ||
@@ -103,10 +115,13 @@ export default function App() {
     "vet-chat",
     "vet-directory",
     "vet-location",
+    "vet-filters",
     "log-meal",
     "log-walk",
     "meal-scanner",
     "meal-scan-results",
+    "document-scanner",
+    "document-scan-results",
   ].includes(currentScreen);
 
   const showBottomNav = ![
@@ -116,6 +131,7 @@ export default function App() {
     "scan-camera",
     "vet-chat",
     "meal-scanner",
+    "document-scanner",
   ].includes(currentScreen);
 
   return (
@@ -155,7 +171,8 @@ export default function App() {
             currentScreen !== "meal-scanner" &&
             currentScreen !== "meal-scan-results" &&
             currentScreen !== "vet-location" &&
-            currentScreen !== "vet-directory" && (
+            currentScreen !== "vet-directory" &&
+            currentScreen !== "vet-filters" && (
               <div className="bg-white/90 backdrop-blur-xl border-b border-[#E5E7EB] px-4 py-3 flex items-center gap-3 z-10 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
                 <Button
                   variant="ghost"
@@ -178,7 +195,8 @@ export default function App() {
             currentScreen === "scan-results" ||
             currentScreen === "reports" ||
             currentScreen === "profile" ||
-            currentScreen === "meal-scan-results") && (
+            currentScreen === "meal-scan-results" ||
+            currentScreen === "document-scan-results") && (
             <div className="absolute top-4 left-4 z-20">
               <button
                 onClick={handleBack}
@@ -190,7 +208,8 @@ export default function App() {
           )}
 
           {(currentScreen === "scan-camera" ||
-            currentScreen === "meal-scanner") && (
+            currentScreen === "meal-scanner" ||
+            currentScreen === "document-scanner") && (
             <div className="absolute top-4 left-4 z-20">
               <button
                 onClick={handleBack}
@@ -201,8 +220,8 @@ export default function App() {
             </div>
           )}
 
-          {/* Back Button for vet-location and vet-directory screens */}
-          {(currentScreen === "vet-location" || currentScreen === "vet-directory") && (
+          {/* Back Button for vet-location, vet-directory, and vet-filters screens */}
+          {(currentScreen === "vet-location" || currentScreen === "vet-directory" || currentScreen === "vet-filters") && (
             <div className="absolute top-4 left-4 z-20">
               <button
                 onClick={handleBack}
@@ -262,6 +281,9 @@ export default function App() {
                 locationId={scanParams.locationId}
               />
             )}
+            {currentScreen === "vet-filters" && (
+              <VetFiltersScreen onNavigate={handleNavigate} />
+            )}
             {currentScreen === "log-meal" && (
               <LogMealScreen onNavigate={handleNavigate} />
             )}
@@ -273,6 +295,16 @@ export default function App() {
             )}
             {currentScreen === "meal-scan-results" && (
               <MealScanResults onNavigate={handleNavigate} />
+            )}
+            {currentScreen === "document-scanner" && (
+              <DocumentScannerCamera onNavigate={handleNavigate} />
+            )}
+            {currentScreen === "document-scan-results" && (
+              <DocumentScanResults
+                scanType={scanParams.type}
+                category={scanParams.category}
+                onNavigate={handleNavigate}
+              />
             )}
             {currentScreen === "reports" && (
               <ReportsScreenCalm onNavigate={handleNavigate} />

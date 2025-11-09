@@ -136,7 +136,7 @@ export function VetLocationScreen({ onNavigate, locationId = "riverside-vet" }: 
   }, []);
 
   return (
-    <div className="min-h-screen pb-24 relative overflow-hidden">
+    <div className="min-h-screen pb-6 relative overflow-hidden">
       {/* Tri-tone Gradient Background - same as home screen */}
       <div className={`absolute inset-0 ${isDarkMode ? 'gradient-bg-light' : 'gradient-bg'} transition-colors duration-500`}></div>
 

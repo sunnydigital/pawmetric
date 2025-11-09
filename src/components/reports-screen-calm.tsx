@@ -1,6 +1,6 @@
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
-import { TrendingUp, Download, Calendar, Utensils, Footprints, Activity, Zap } from "lucide-react";
+import { TrendingUp, Download, Calendar, Utensils, Footprints, Activity, Zap, FileText, Eye, ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
 
@@ -24,6 +24,12 @@ const todaysMeals = [
   { time: "3:00 PM", name: "Treats", food: "Training treats", calories: 50 },
 ];
 
+const recentDocuments = [
+  { id: 1, type: "Vaccination", title: "Rabies Vaccine", date: "Jan 15, 2024", icon: "💉", color: "from-blue-500 to-blue-600" },
+  { id: 2, type: "Prescription", title: "Apoquel 16mg", date: "Feb 10, 2024", icon: "📋", color: "from-purple-500 to-purple-600" },
+  { id: 3, type: "Diagnosis", title: "Mild Dermatitis", date: "Mar 5, 2024", icon: "🏥", color: "from-green-500 to-green-600" },
+];
+
 const stats = [
   { id: 1, label: "Calories In", value: "810", unit: "kcal", icon: Utensils, color: "from-blue-500 to-blue-600" },
   { id: 2, label: "Miles Walked", value: "2.4", unit: "mi", icon: Footprints, color: "from-green-500 to-green-600" },
@@ -33,7 +39,7 @@ const stats = [
 
 export function ReportsScreenCalm({ onNavigate }: ReportsScreenCalmProps) {
   return (
-    <div className="min-h-full gradient-bg pb-24">
+    <div className="min-h-full gradient-bg pb-6">
       {/* Header */}
       <div className="px-6 pt-16 pb-8">
         <div className="flex items-center justify-between mb-2">
@@ -122,6 +128,53 @@ export function ReportsScreenCalm({ onNavigate }: ReportsScreenCalmProps) {
               </AreaChart>
             </ResponsiveContainer>
           </div>
+        </div>
+
+        {/* Pet Documents Section */}
+        <div>
+          <div className="flex items-center justify-between mb-4 px-2">
+            <h3 className="text-white/90 font-bold">Pet Documents</h3>
+            <button className="text-white/70 text-sm hover:text-white transition-all">
+              View All
+            </button>
+          </div>
+          <div className="space-y-3">
+            {recentDocuments.map((doc, index) => (
+              <motion.button
+                key={doc.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: index * 0.1 }}
+                className="w-full p-4 bg-white/15 backdrop-blur-xl border border-white/20 rounded-[24px] hover:bg-white/20 transition-all"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-[12px] bg-gradient-to-br ${doc.color} flex items-center justify-center flex-shrink-0 shadow-lg text-2xl`}>
+                    {doc.icon}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="text-white font-semibold">{doc.title}</h4>
+                      <ChevronRight className="w-5 h-5 text-white/50" />
+                    </div>
+                    <p className="text-white/70 text-sm">{doc.type}</p>
+                    <p className="text-white/50 text-xs mt-1">{doc.date}</p>
+                  </div>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+
+          {/* Add Document Button */}
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            onClick={() => onNavigate("document-scanner")}
+            className="w-full mt-3 p-4 border-2 border-dashed border-white/30 rounded-[24px] text-white/70 hover:text-white hover:border-white/50 transition-all flex items-center justify-center gap-2"
+          >
+            <FileText className="w-5 h-5" />
+            <span className="font-medium">Scan New Document</span>
+          </motion.button>
         </div>
 
         {/* Today's Meals */}

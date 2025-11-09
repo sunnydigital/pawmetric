@@ -1,10 +1,10 @@
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { 
-  Search, 
-  MapPin, 
-  Star, 
+import {
+  Search,
+  MapPin,
+  Star,
   Clock,
   Filter,
   SlidersHorizontal
@@ -71,7 +71,7 @@ export function VetDirectoryScreen({ onNavigate }: VetDirectoryScreenProps) {
   const { isDarkMode } = useDarkMode();
 
   return (
-    <div className="min-h-screen pb-24 relative overflow-hidden">
+    <div className="min-h-screen pb-6 relative overflow-hidden">
       {/* Tri-tone Gradient Background - same as home screen */}
       <div className={`absolute inset-0 ${isDarkMode ? 'gradient-bg-light' : 'gradient-bg'} transition-colors duration-500`}></div>
 
@@ -95,7 +95,10 @@ export function VetDirectoryScreen({ onNavigate }: VetDirectoryScreenProps) {
             <MapPin className="w-4 h-4 mr-2" />
             Nearby
           </Button>
-          <Button className="flex-1 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border-0 rounded-full h-10">
+          <Button
+            onClick={() => onNavigate("vet-filters")}
+            className="flex-1 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border-0 rounded-full h-10"
+          >
             <SlidersHorizontal className="w-4 h-4 mr-2" />
             Filters
           </Button>
@@ -202,7 +205,10 @@ export function VetDirectoryScreen({ onNavigate }: VetDirectoryScreenProps) {
 
       {/* Floating Action Button */}
       <div className="fixed bottom-28 right-6 z-50">
-        <Button className="w-14 h-14 bg-gradient-to-br from-[#2563EB] to-[#34D399] hover:from-[#1D4ED8] hover:to-[#10B981] rounded-full shadow-[0_8px_24px_rgba(37,99,235,0.4)] hover:scale-110 transition-all">
+        <Button
+          onClick={() => onNavigate("vet-filters")}
+          className="w-14 h-14 bg-gradient-to-br from-[#2563EB] to-[#34D399] hover:from-[#1D4ED8] hover:to-[#10B981] rounded-full shadow-[0_8px_24px_rgba(37,99,235,0.4)] hover:scale-110 transition-all"
+        >
           <Filter className="w-6 h-6 text-white" />
         </Button>
       </div>

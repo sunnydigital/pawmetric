@@ -55,7 +55,7 @@ export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
   const circumference = 2 * Math.PI * 70;
 
   return (
-    <div className="min-h-full pb-24 relative overflow-hidden">
+    <div className="min-h-full pb-3 relative overflow-hidden">
       {/* Tri-tone Gradient Background */}
       <div className={`absolute inset-0 ${isDarkMode ? 'gradient-bg-light' : 'gradient-bg'} transition-colors duration-500`}></div>
 

@@ -8,6 +8,10 @@ import {
   Scan,
   Activity,
   Bone,
+  FileText,
+  Syringe,
+  ClipboardList,
+  Stethoscope,
 } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -92,7 +96,7 @@ export function HealthCheckCalm({
   onNavigate,
 }: HealthCheckCalmProps) {
   return (
-    <div className="min-h-full gradient-bg pb-24">
+    <div className="min-h-full gradient-bg pb-4">
       {/* Header Section */}
       <motion.div
         className="px-6 pt-16 pb-8 text-center"
@@ -250,6 +254,74 @@ export function HealthCheckCalm({
             </motion.button>
           ))}
         </div>
+
+        {/* Document Scanner Button */}
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="w-full p-5 border rounded-[24px] transition-all"
+          style={{
+            background: "rgba(255, 255, 255, 0.1)",
+            borderColor: "rgba(255, 255, 255, 0.2)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+          }}
+          onClick={() =>
+            onNavigate("document-scanner", {
+              type: "document",
+              title: "Scan Document",
+            })
+          }
+          whileHover={{ scale: 1.02, y: -2 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <div className="flex items-center gap-4">
+            <div
+              className="w-16 h-16 rounded-[12px] backdrop-blur-sm flex items-center justify-center text-3xl flex-shrink-0 border border-white/20"
+              style={{
+                background: "rgba(255, 255, 255, 0.15)",
+              }}
+            >
+              📄
+            </div>
+            <div className="flex-1 text-left">
+              <h3
+                className="text-white mb-1 font-bold"
+                style={{
+                  fontSize: "16px",
+                  lineHeight: "24px",
+                }}
+              >
+                Scan Pet Documents
+              </h3>
+              <p
+                className="text-white/70 font-medium"
+                style={{
+                  fontSize: "14px",
+                  lineHeight: "20px",
+                }}
+              >
+                Vaccinations, prescriptions, diagnoses
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </div>
+          </div>
+        </motion.button>
 
         {/* View History Link */}
         <motion.button
