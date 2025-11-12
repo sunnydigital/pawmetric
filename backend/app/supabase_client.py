@@ -1,11 +1,17 @@
 from supabase import create_client, Client
 from app.config import settings
 
-# Initialize Supabase client
+# Initialize Supabase client (for regular operations)
 supabase: Client = None
+
+# Initialize Supabase admin client (for admin operations like creating buckets)
+supabase_admin: Client = None
 
 if settings.SUPABASE_URL and settings.SUPABASE_KEY:
     supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+
+if settings.SUPABASE_URL and settings.SUPABASE_SERVICE_KEY:
+    supabase_admin = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
 
 def get_supabase() -> Client:
@@ -68,21 +74,22 @@ async def delete_file_from_supabase(bucket: str, file_path: str) -> bool:
 
 def init_supabase_storage():
     """Initialize Supabase storage buckets"""
-    if not supabase:
-        print("Warning: Supabase not configured. File uploads will not work.")
+    if not supabase_admin:
+        print("Warning: Supabase admin client not configured. Skipping bucket creation.")
+        print("Please set SUPABASE_SERVICE_KEY in your .env file for admin operations.")
         return
 
     try:
         # Create main bucket if it doesn't exist
         bucket_name = settings.SUPABASE_STORAGE_BUCKET
 
-        # List existing buckets
-        buckets = supabase.storage.list_buckets()
+        # List existing buckets using admin client
+        buckets = supabase_admin.storage.list_buckets()
         bucket_exists = any(b.name == bucket_name for b in buckets)
 
         if not bucket_exists:
-            # Create bucket (public for easy access, or set to private and use signed URLs)
-            supabase.storage.create_bucket(
+            # Create bucket using admin client (public for easy access, or set to private and use signed URLs)
+            supabase_admin.storage.create_bucket(
                 bucket_name,
                 options={"public": True}
             )
