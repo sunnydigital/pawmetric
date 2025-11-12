@@ -28,7 +28,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     try {
       if (isLogin) {
         // Login
-        await login(email, password);
+        await login({ email, password });
       } else {
         // Register
         if (!name.trim()) {
@@ -36,7 +36,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           setIsLoading(false);
           return;
         }
-        await register(email, password, name);
+        await register({ email, password, name });
       }
 
       // Success! Move to next screen
