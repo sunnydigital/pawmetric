@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 import os
 
 from app.config import settings
@@ -11,13 +12,43 @@ from app.supabase_client import init_supabase_storage
 # Import routers
 from app.routers import auth, pets, health_scans, activities, veterinarians, chat, analytics
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan event handler for startup and shutdown"""
+    # Startup
+    print("🚀 Starting PawMetric API...")
+    print(f"📊 Environment: {settings.DEBUG and 'Development' or 'Production'}")
+
+    # Initialize database tables
+    print("📦 Initializing database...")
+    init_db()
+    print("✅ Database initialized")
+
+    # Initialize Supabase storage
+    if settings.SUPABASE_URL and settings.SUPABASE_KEY:
+        print("☁️  Initializing Supabase storage...")
+        init_supabase_storage()
+        print("✅ Supabase storage initialized")
+    else:
+        print("⚠️  Supabase not configured - file uploads will not work")
+
+    print("✨ PawMetric API is ready!")
+
+    yield
+
+    # Shutdown (if needed in the future)
+    print("👋 Shutting down PawMetric API...")
+
+
 # Create FastAPI app
 app = FastAPI(
     title="PawMetric API",
     description="Backend API for PetScope/PawMetric - Pet Health Monitoring Application",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -37,28 +68,6 @@ app.include_router(activities.router, prefix="/api/v1")
 app.include_router(veterinarians.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database and storage on startup"""
-    print("🚀 Starting PawMetric API...")
-    print(f"📊 Environment: {settings.DEBUG and 'Development' or 'Production'}")
-
-    # Initialize database tables
-    print("📦 Initializing database...")
-    init_db()
-    print("✅ Database initialized")
-
-    # Initialize Supabase storage
-    if settings.SUPABASE_URL and settings.SUPABASE_KEY:
-        print("☁️  Initializing Supabase storage...")
-        init_supabase_storage()
-        print("✅ Supabase storage initialized")
-    else:
-        print("⚠️  Supabase not configured - file uploads will not work")
-
-    print("✨ PawMetric API is ready!")
 
 
 @app.get("/")
