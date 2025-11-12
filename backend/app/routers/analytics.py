@@ -12,6 +12,57 @@ from app.auth import get_current_user
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 
+@router.get("/dashboard", response_model=dict)
+async def get_user_dashboard(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get dashboard stats for the current user"""
+    # Get all user's pets
+    pets = db.query(Pet).filter(Pet.user_id == current_user.id).all()
+
+    if not pets:
+        return {
+            "success": True,
+            "data": {
+                "total_pets": 0,
+                "total_scans": 0,
+                "total_activities": 0,
+                "average_health_score": 0
+            }
+        }
+
+    # Get total scans across all pets
+    total_scans = db.query(func.count(HealthScan.id)).join(Pet).filter(
+        Pet.user_id == current_user.id
+    ).scalar() or 0
+
+    # Get total activities across all pets
+    total_activities = db.query(func.count(Activity.id)).join(Pet).filter(
+        Pet.user_id == current_user.id
+    ).scalar() or 0
+
+    # Calculate average health score across all pets
+    health_scores = db.query(HealthScore).join(Pet).filter(
+        Pet.user_id == current_user.id
+    ).all()
+
+    avg_health_score = 0
+    if health_scores:
+        total_score = sum(hs.overall_score for hs in health_scores if hs.overall_score)
+        avg_health_score = round(total_score / len(health_scores), 1) if health_scores else 0
+
+    return {
+        "success": True,
+        "data": {
+            "total_pets": len(pets),
+            "total_scans": total_scans,
+            "total_activities": total_activities,
+            "average_health_score": avg_health_score
+        }
+    }
+
+
 @router.get("/pet/{pet_id}/health-trends", response_model=dict)
 async def get_health_trends(
     pet_id: uuid.UUID,
