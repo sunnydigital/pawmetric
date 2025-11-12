@@ -22,6 +22,7 @@ import { VetFiltersScreen } from "./components/vet-filters-screen";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { DarkModeProvider } from "./components/dark-mode-context";
+import { AuthProvider } from "./contexts/AuthContext";
 
 type Screen =
   | "onboarding"
@@ -135,8 +136,9 @@ export default function App() {
   ].includes(currentScreen);
 
   return (
-    <DarkModeProvider>
-      <div className="size-full bg-[#1F2937] flex items-center justify-center relative">
+    <AuthProvider>
+      <DarkModeProvider>
+        <div className="size-full bg-[#1F2937] flex items-center justify-center relative">
         {/* Debug Helper - Skip to App (only on onboarding/login/setup) */}
         {(currentScreen === "onboarding" ||
           currentScreen === "login" ||
@@ -323,6 +325,7 @@ export default function App() {
           )}
         </div>
       </div>
-    </DarkModeProvider>
+      </DarkModeProvider>
+    </AuthProvider>
   );
 }
