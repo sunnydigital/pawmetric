@@ -30,9 +30,30 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    pre_hashed = _pre_hash_password(plain_password)
-    return pwd_context.verify(pre_hashed, hashed_password)
+    """Verify a password against its hash
+
+    Supports both new (SHA256 pre-hashed) and old (direct) password formats
+    for backward compatibility with existing user passwords.
+    """
+    # Try new method first (SHA256 pre-hashed)
+    try:
+        pre_hashed = _pre_hash_password(plain_password)
+        if pwd_context.verify(pre_hashed, hashed_password):
+            return True
+    except (ValueError, Exception):
+        # If new method fails, fall through to try old method
+        pass
+
+    # Fall back to old method (direct password) for backward compatibility
+    # This handles passwords that were hashed before the SHA256 pre-hashing fix
+    try:
+        # Only try if password is within bcrypt's 72-byte limit
+        if len(plain_password.encode('utf-8')) <= 72:
+            return pwd_context.verify(plain_password, hashed_password)
+    except (ValueError, Exception):
+        pass
+
+    return False
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
