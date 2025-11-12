@@ -7,68 +7,95 @@ import {
   Star,
   Clock,
   Filter,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Loader2
 } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useDarkMode } from "./dark-mode-context";
+import { useVeterinarians } from "../hooks/useApi";
+import { useState, useMemo } from "react";
+import type { Veterinarian } from "../types/api";
 
 interface VetDirectoryScreenProps {
   onNavigate: (screen: string, params?: any) => void;
 }
 
-const vetLocations = [
-  {
-    id: "riverside-vet",
-    name: "Riverside Veterinary Hospital",
-    image: "https://images.unsplash.com/photo-1664649908616-51650c9b28ce?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2ZXRlcmluYXJ5JTIwY2xpbmljJTIwaW50ZXJpb3J8ZW58MXx8fHwxNzYxMTc2NjYxfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: 4.8,
-    reviewCount: 324,
-    distance: "1.2 miles",
-    address: "245 Riverside Drive, San Francisco, CA",
-    specialties: ["Emergency Care", "Surgery", "Eye Care"],
-    availability: "Open Now",
-    openStatus: "open",
-  },
-  {
-    id: "paws-wellness",
-    name: "Paws & Wellness Center",
-    image: "https://images.unsplash.com/photo-1664649908616-51650c9b28ce?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2ZXRlcmluYXJ5JTIwY2xpbmljJTIwaW50ZXJpb3J8ZW58MXx8fHwxNzYxMTc2NjYxfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: 4.9,
-    reviewCount: 512,
-    distance: "2.5 miles",
-    address: "1840 Market Street, San Francisco, CA",
-    specialties: ["24/7 Emergency", "Cardiology", "Holistic Care"],
-    availability: "Open 24/7",
-    openStatus: "open",
-  },
-  {
-    id: "urban-pet-clinic",
-    name: "Urban Pet Clinic",
-    image: "https://images.unsplash.com/photo-1664649908616-51650c9b28ce?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2ZXRlcmluYXJ5JTIwY2xpbmljJTIwaW50ZXJpb3J8ZW58MXx8fHwxNzYxMTc2NjYxfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: 4.7,
-    reviewCount: 189,
-    distance: "3.8 miles",
-    address: "567 Mission Street, San Francisco, CA",
-    specialties: ["Dental Care", "Vaccinations", "Wellness"],
-    availability: "Opens at 9:00 AM",
-    openStatus: "closed",
-  },
-  {
-    id: "bay-area-animal",
-    name: "Bay Area Animal Hospital",
-    image: "https://images.unsplash.com/photo-1664649908616-51650c9b28ce?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2ZXRlcmluYXJ5JTIwY2xpbmljJTIwaW50ZXJpb3J8ZW58MXx8fHwxNzYxMTc2NjYxfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: 4.6,
-    reviewCount: 276,
-    distance: "4.2 miles",
-    address: "890 Valencia Street, San Francisco, CA",
-    specialties: ["Orthopedics", "Surgery", "Rehab"],
-    availability: "Open Now",
-    openStatus: "open",
-  },
-];
-
 export function VetDirectoryScreen({ onNavigate }: VetDirectoryScreenProps) {
   const { isDarkMode } = useDarkMode();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Fetch veterinarians from API
+  const { veterinarians, loading, error } = useVeterinarians();
+
+  // Process veterinarians for display
+  const processedVets = useMemo(() => {
+    if (!veterinarians) return [];
+
+    return veterinarians.map(vet => {
+      const distance = calculateDistance(vet.latitude, vet.longitude);
+      const openStatus = isVetOpen(vet.hours);
+      const availability = getAvailabilityText(vet.hours, openStatus, vet.accepts_emergencies);
+
+      return {
+        id: vet.id,
+        name: vet.clinic_name,
+        image: "https://images.unsplash.com/photo-1664649908616-51650c9b28ce?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2ZXRlcmluYXJ5JTIwY2xpbmljJTIwaW50ZXJpb3J8ZW58MXx8fHwxNzYxMTc2NjYxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+        rating: vet.rating || 0,
+        reviewCount: vet.review_count || 0,
+        distance,
+        address: `${vet.address}, ${vet.city}, ${vet.state}`,
+        specialties: vet.specialty || [],
+        availability,
+        openStatus,
+        phone: vet.phone,
+      };
+    });
+  }, [veterinarians]);
+
+  // Filter vets by search query
+  const filteredVets = useMemo(() => {
+    if (!searchQuery) return processedVets;
+
+    const query = searchQuery.toLowerCase();
+    return processedVets.filter(vet =>
+      vet.name.toLowerCase().includes(query) ||
+      vet.specialties.some(s => s.toLowerCase().includes(query)) ||
+      vet.address.toLowerCase().includes(query)
+    );
+  }, [processedVets, searchQuery]);
+
+  // Calculate stats
+  const stats = useMemo(() => {
+    const openNow = filteredVets.filter(v => v.openStatus === "open").length;
+    const avgRating = filteredVets.length > 0
+      ? (filteredVets.reduce((sum, v) => sum + v.rating, 0) / filteredVets.length).toFixed(1)
+      : "0.0";
+
+    return {
+      total: filteredVets.length,
+      openNow,
+      avgRating,
+    };
+  }, [filteredVets]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-2 text-red-500">Error Loading Vets</h2>
+          <p className="text-gray-600">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-6 relative overflow-hidden">
@@ -85,6 +112,8 @@ export function VetDirectoryScreen({ onNavigate }: VetDirectoryScreenProps) {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#6B7280]" />
           <Input
             placeholder="Search by name, specialty..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 pr-4 h-12 bg-white border-0 rounded-full shadow-lg focus:ring-2 focus:ring-white/50"
           />
         </div>
@@ -110,15 +139,15 @@ export function VetDirectoryScreen({ onNavigate }: VetDirectoryScreenProps) {
         <Card className="p-4 bg-white/20 backdrop-blur-md border-0 rounded-[20px] shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
           <div className="grid grid-cols-3 divide-x divide-white/30">
             <div className="text-center">
-              <div className="text-2xl text-white mb-1">{vetLocations.length}</div>
+              <div className="text-2xl text-white mb-1">{stats.total}</div>
               <div className="text-xs text-white/80">Nearby</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl text-white mb-1">3</div>
+              <div className="text-2xl text-white mb-1">{stats.openNow}</div>
               <div className="text-xs text-white/80">Open Now</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl text-white mb-1">4.8</div>
+              <div className="text-2xl text-white mb-1">{stats.avgRating}</div>
               <div className="text-xs text-white/80">Avg Rating</div>
             </div>
           </div>
@@ -132,7 +161,12 @@ export function VetDirectoryScreen({ onNavigate }: VetDirectoryScreenProps) {
           <button className="text-sm text-white/90 hover:text-white transition-colors">View Map</button>
         </div>
 
-        {vetLocations.map((vet) => (
+        {filteredVets.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-white/80">No veterinarians found</p>
+          </div>
+        ) : (
+          filteredVets.map((vet) => (
           <Card
             key={vet.id}
             onClick={() => onNavigate("vet-location", { locationId: vet.id })}
@@ -200,7 +234,8 @@ export function VetDirectoryScreen({ onNavigate }: VetDirectoryScreenProps) {
               </button>
             </div>
           </Card>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Floating Action Button */}
@@ -215,4 +250,40 @@ export function VetDirectoryScreen({ onNavigate }: VetDirectoryScreenProps) {
       </div>
     </div>
   );
+}
+
+// Utility functions
+function calculateDistance(lat?: number, lng?: number): string {
+  // For now, return a placeholder distance
+  // In production, this would calculate distance from user's location
+  if (!lat || !lng) return "N/A";
+
+  // Simulate distance calculation (random between 0.5 and 5 miles)
+  const distance = (Math.random() * 4.5 + 0.5).toFixed(1);
+  return `${distance} miles`;
+}
+
+function isVetOpen(hours?: Record<string, string>): "open" | "closed" {
+  if (!hours) return "closed";
+
+  const now = new Date();
+  const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const currentDay = dayNames[now.getDay()];
+  const currentHours = hours[currentDay];
+
+  if (!currentHours || currentHours.toLowerCase() === "closed") {
+    return "closed";
+  }
+
+  // Simple check: if hours exist and it's not "closed", assume open
+  // In production, parse the hours and check current time
+  return "open";
+}
+
+function getAvailabilityText(hours?: Record<string, string>, openStatus?: string, accepts24h?: boolean): string {
+  if (accepts24h) return "Open 24/7";
+  if (openStatus === "open") return "Open Now";
+
+  // Return next opening time
+  return "Opens at 9:00 AM";
 }
