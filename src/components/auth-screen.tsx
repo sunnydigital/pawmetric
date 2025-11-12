@@ -136,7 +136,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 bg-red-500/20 border border-red-500/50 rounded-2xl"
+                className="p-3 bg-red-500/20 border border-red-500/50 rounded-[100px]"
               >
                 <p className="text-white text-sm text-center">{error}</p>
               </motion.div>
