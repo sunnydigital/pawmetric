@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HomeDashboardCalm } from "./components/home-dashboard-calm";
 import { HealthCheckCalm } from "./components/health-check-calm";
 import { ScanCameraCalm } from "./components/scan-camera-calm";
@@ -13,7 +13,7 @@ import { ProfileScreenCalm } from "./components/profile-screen-calm";
 import { MealScannerCamera } from "./components/meal-scanner-camera";
 import { MealScanResults } from "./components/meal-scan-results";
 import { OnboardingCarousel } from "./components/onboarding-carousel";
-import { LoginScreen } from "./components/login-screen";
+import { AuthScreen } from "./components/auth-screen";
 import { PetProfileSetup } from "./components/pet-profile-setup";
 import { BottomNavCalm } from "./components/bottom-nav-calm";
 import { DocumentScannerCamera } from "./components/document-scanner-camera";
@@ -22,7 +22,7 @@ import { VetFiltersScreen } from "./components/vet-filters-screen";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { DarkModeProvider } from "./components/dark-mode-context";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 type Screen =
   | "onboarding"
@@ -47,11 +47,21 @@ type Screen =
 
 type MainTab = "home" | "scans" | "vet" | "reports" | "profile";
 
-export default function App() {
-  const [currentScreen, setCurrentScreen] =
-    useState<Screen>("onboarding");
+function AppContent() {
+  const { user, isAuthenticated } = useAuth();
+  const [currentScreen, setCurrentScreen] = useState<Screen>("onboarding");
   const [activeTab, setActiveTab] = useState<MainTab>("home");
   const [scanParams, setScanParams] = useState<any>({});
+
+  // Check authentication status and redirect if needed
+  useEffect(() => {
+    if (currentScreen !== "onboarding" && currentScreen !== "login") {
+      if (!isAuthenticated) {
+        // Not authenticated - go to login
+        setCurrentScreen("login");
+      }
+    }
+  }, [isAuthenticated, currentScreen]);
 
   const handleNavigate = (screen: string, params?: any) => {
     if (params) {
@@ -136,26 +146,9 @@ export default function App() {
   ].includes(currentScreen);
 
   return (
-    <AuthProvider>
-      <DarkModeProvider>
-        <div className="size-full bg-[#1F2937] flex items-center justify-center relative">
-        {/* Debug Helper - Skip to App (only on onboarding/login/setup) */}
-        {(currentScreen === "onboarding" ||
-          currentScreen === "login" ||
-          currentScreen === "pet-setup") && (
-          <div className="fixed top-6 right-6 z-50">
-            <Button
-              onClick={() => setCurrentScreen("home")}
-              variant="outline"
-              className="h-10 px-4 bg-white/90 backdrop-blur-sm border-[#E5E7EB] hover:bg-white rounded-full shadow-lg text-sm"
-            >
-              Skip to App
-            </Button>
-          </div>
-        )}
-
-        {/* iPhone 15 Pro Frame - 393 × 852 px */}
-        <div
+    <div className="size-full bg-[#1F2937] flex items-center justify-center relative">
+      {/* iPhone 15 Pro Frame - 393 × 852 px */}
+      <div
           className="bg-black relative overflow-hidden flex flex-col shadow-[0_20px_60px_rgba(0,0,0,0.8)] rounded-[48px] border-[8px] border-[#1F2937]"
           style={{
             width: "393px",
@@ -242,7 +235,7 @@ export default function App() {
               />
             )}
             {currentScreen === "login" && (
-              <LoginScreen
+              <AuthScreen
                 onComplete={() => setCurrentScreen("pet-setup")}
               />
             )}
@@ -325,6 +318,15 @@ export default function App() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <DarkModeProvider>
+        <AppContent />
       </DarkModeProvider>
     </AuthProvider>
   );
