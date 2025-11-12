@@ -40,9 +40,32 @@ async def create_veterinarian(
     db.commit()
     db.refresh(new_vet)
 
+    vet_dict = {
+        "id": str(new_vet.id),
+        "name": new_vet.name,
+        "clinic_name": new_vet.clinic_name,
+        "specialty": new_vet.specialty,
+        "address": new_vet.address,
+        "city": new_vet.city,
+        "state": new_vet.state,
+        "zip_code": new_vet.zip_code,
+        "latitude": new_vet.latitude,
+        "longitude": new_vet.longitude,
+        "phone": new_vet.phone,
+        "email": new_vet.email,
+        "website": new_vet.website,
+        "hours": new_vet.hours,
+        "rating": new_vet.rating,
+        "review_count": new_vet.review_count,
+        "image_url": new_vet.image_url,
+        "description": new_vet.description,
+        "accepts_emergencies": new_vet.accepts_emergencies,
+        "created_at": new_vet.created_at.isoformat() if new_vet.created_at else None,
+    }
+
     return {
         "success": True,
-        "data": {"veterinarian": new_vet}
+        "data": {"veterinarian": vet_dict}
     }
 
 
@@ -95,6 +118,7 @@ async def get_veterinarians(
                     "image_url": vet.image_url,
                     "description": vet.description,
                     "accepts_emergencies": vet.accepts_emergencies,
+                    "created_at": vet.created_at.isoformat() if vet.created_at else None,
                     "distance": round(distance, 2)
                 }
                 vet_list.append(vet_dict)
@@ -106,9 +130,36 @@ async def get_veterinarians(
             "data": {"veterinarians": vet_list}
         }
 
+    # Convert vets to dictionaries
+    vet_list = []
+    for vet in vets:
+        vet_dict = {
+            "id": str(vet.id),
+            "name": vet.name,
+            "clinic_name": vet.clinic_name,
+            "specialty": vet.specialty,
+            "address": vet.address,
+            "city": vet.city,
+            "state": vet.state,
+            "zip_code": vet.zip_code,
+            "latitude": vet.latitude,
+            "longitude": vet.longitude,
+            "phone": vet.phone,
+            "email": vet.email,
+            "website": vet.website,
+            "hours": vet.hours,
+            "rating": vet.rating,
+            "review_count": vet.review_count,
+            "image_url": vet.image_url,
+            "description": vet.description,
+            "accepts_emergencies": vet.accepts_emergencies,
+            "created_at": vet.created_at.isoformat() if vet.created_at else None,
+        }
+        vet_list.append(vet_dict)
+
     return {
         "success": True,
-        "data": {"veterinarians": vets}
+        "data": {"veterinarians": vet_list}
     }
 
 
@@ -126,9 +177,32 @@ async def get_veterinarian(
             detail="Veterinarian not found"
         )
 
+    vet_dict = {
+        "id": str(vet.id),
+        "name": vet.name,
+        "clinic_name": vet.clinic_name,
+        "specialty": vet.specialty,
+        "address": vet.address,
+        "city": vet.city,
+        "state": vet.state,
+        "zip_code": vet.zip_code,
+        "latitude": vet.latitude,
+        "longitude": vet.longitude,
+        "phone": vet.phone,
+        "email": vet.email,
+        "website": vet.website,
+        "hours": vet.hours,
+        "rating": vet.rating,
+        "review_count": vet.review_count,
+        "image_url": vet.image_url,
+        "description": vet.description,
+        "accepts_emergencies": vet.accepts_emergencies,
+        "created_at": vet.created_at.isoformat() if vet.created_at else None,
+    }
+
     return {
         "success": True,
-        "data": {"veterinarian": vet}
+        "data": {"veterinarian": vet_dict}
     }
 
 
@@ -155,9 +229,32 @@ async def update_veterinarian(
     db.commit()
     db.refresh(vet)
 
+    vet_dict = {
+        "id": str(vet.id),
+        "name": vet.name,
+        "clinic_name": vet.clinic_name,
+        "specialty": vet.specialty,
+        "address": vet.address,
+        "city": vet.city,
+        "state": vet.state,
+        "zip_code": vet.zip_code,
+        "latitude": vet.latitude,
+        "longitude": vet.longitude,
+        "phone": vet.phone,
+        "email": vet.email,
+        "website": vet.website,
+        "hours": vet.hours,
+        "rating": vet.rating,
+        "review_count": vet.review_count,
+        "image_url": vet.image_url,
+        "description": vet.description,
+        "accepts_emergencies": vet.accepts_emergencies,
+        "created_at": vet.created_at.isoformat() if vet.created_at else None,
+    }
+
     return {
         "success": True,
-        "data": {"veterinarian": vet}
+        "data": {"veterinarian": vet_dict}
     }
 
 
