@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional
+import hashlib
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
@@ -17,14 +18,21 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 
+def _pre_hash_password(password: str) -> str:
+    """Pre-hash password with SHA256 to handle bcrypt's 72-byte limit"""
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+
+
 def hash_password(password: str) -> str:
-    """Hash a password"""
-    return pwd_context.hash(password)
+    """Hash a password using SHA256 + bcrypt"""
+    pre_hashed = _pre_hash_password(password)
+    return pwd_context.hash(pre_hashed)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    pre_hashed = _pre_hash_password(plain_password)
+    return pwd_context.verify(pre_hashed, hashed_password)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
