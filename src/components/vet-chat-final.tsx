@@ -1,54 +1,96 @@
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Send, Paperclip, Image, Phone, Video } from "lucide-react";
-import { useState } from "react";
+import { Send, Paperclip, Image, Phone, Video, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useChat } from "../hooks/useApi";
+import { usePets } from "../hooks/useApi";
+import type { ChatMessage } from "../types/api";
 
 interface VetChatFinalProps {
   onNavigate: (screen: string) => void;
 }
 
-const messages = [
-  {
-    id: 1,
-    sender: "vet",
-    name: "Dr. Sarah Johnson",
-    avatar: "👩‍⚕️",
-    message: "Hello! I reviewed Max's recent eye scan. The mild redness is likely due to minor irritation.",
-    time: "2:34 PM",
-  },
-  {
-    id: 2,
-    sender: "user",
-    message: "Thank you for reviewing! Should I be concerned?",
-    time: "2:36 PM",
-  },
-  {
-    id: 3,
-    sender: "vet",
-    name: "Dr. Sarah Johnson",
-    avatar: "👩‍⚕️",
-    message: "Not at this point. Monitor for 48 hours. If redness increases or you notice discharge, book an in-person visit.",
-    time: "2:38 PM",
-  },
-  {
-    id: 4,
-    sender: "user",
-    message: "Got it. What about using eye drops?",
-    time: "2:39 PM",
-  },
-  {
-    id: 5,
-    sender: "vet",
-    name: "Dr. Sarah Johnson",
-    avatar: "👩‍⚕️",
-    message: "You can use saline solution to gently clean the area 2x daily. Avoid human eye drops unless prescribed by a vet.",
-    time: "2:41 PM",
-  },
-];
-
 export function VetChatFinal({ onNavigate }: VetChatFinalProps) {
   const [message, setMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { loading, sendMessage, getChatHistory } = useChat();
+  const { pets } = usePets();
+  const currentPet = pets && pets.length > 0 ? pets[0] : null;
+
+  // Load chat history on mount
+  useEffect(() => {
+    const loadHistory = async () => {
+      setIsLoadingHistory(true);
+      const history = await getChatHistory();
+      setChatHistory(history);
+      setIsLoadingHistory(false);
+    };
+    loadHistory();
+  }, []);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || loading) return;
+
+    const userMessage = message.trim();
+    setMessage("");
+
+    try {
+      const response = await sendMessage({
+        message: userMessage,
+        pet_id: currentPet?.id,
+      });
+
+      if (response) {
+        // Refresh chat history after sending
+        const updatedHistory = await getChatHistory();
+        setChatHistory(updatedHistory);
+      }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  // Format messages for display
+  const formattedMessages = chatHistory.flatMap((chat, idx) => [
+    {
+      id: `user-${idx}`,
+      sender: "user",
+      message: chat.message,
+      time: formatTime(new Date(chat.created_at)),
+    },
+    {
+      id: `ai-${idx}`,
+      sender: "vet",
+      name: "PawMetric AI Assistant",
+      avatar: "🤖",
+      message: chat.response,
+      time: formatTime(new Date(chat.created_at)),
+    },
+  ]);
+
+  if (isLoadingHistory) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-[#F9FAFB]">
@@ -56,10 +98,10 @@ export function VetChatFinal({ onNavigate }: VetChatFinalProps) {
       <div className="bg-white border-b border-[#E5E7EB] px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#2563EB] to-[#34D399] flex items-center justify-center text-2xl">
-            👩‍⚕️
+            🤖
           </div>
           <div className="flex-1">
-            <h3 className="text-[#111827]">Dr. Sarah Johnson</h3>
+            <h3 className="text-[#111827]">PawMetric AI Assistant</h3>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-[#34D399] animate-pulse"></div>
               <span className="text-sm text-[#6B7280]">Online</span>
@@ -86,7 +128,12 @@ export function VetChatFinal({ onNavigate }: VetChatFinalProps) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.map((msg) => (
+        {formattedMessages.length === 0 ? (
+          <div className="text-center text-gray-500 mt-8">
+            <p>No messages yet. Start a conversation!</p>
+          </div>
+        ) : (
+          formattedMessages.map((msg) => (
           <div
             key={msg.id}
             className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
@@ -112,7 +159,9 @@ export function VetChatFinal({ onNavigate }: VetChatFinalProps) {
               </p>
             </div>
           </div>
-        ))}
+          ))
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}
@@ -136,16 +185,30 @@ export function VetChatFinal({ onNavigate }: VetChatFinalProps) {
             placeholder="Type your message..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            disabled={loading}
             className="flex-1 bg-[#F3F4F6] border-0 rounded-full px-4 h-11 focus:ring-2 focus:ring-[#2563EB] transition-all"
           />
           <Button
             size="icon"
-            className="w-11 h-11 bg-gradient-to-br from-[#2563EB] to-[#34D399] hover:from-[#1D4ED8] hover:to-[#10B981] rounded-full shadow-[0_4px_12px_rgba(37,99,235,0.3)] transition-all hover:scale-110"
+            onClick={handleSendMessage}
+            disabled={loading || !message.trim()}
+            className="w-11 h-11 bg-gradient-to-br from-[#2563EB] to-[#34D399] hover:from-[#1D4ED8] hover:to-[#10B981] rounded-full shadow-[0_4px_12px_rgba(37,99,235,0.3)] transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Send className="w-4 h-4" />
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
       </div>
     </div>
   );
+}
+
+// Utility function
+function formatTime(date: Date): string {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const formattedHours = hours % 12 || 12;
+  const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+  return `${formattedHours}:${formattedMinutes} ${ampm}`;
 }

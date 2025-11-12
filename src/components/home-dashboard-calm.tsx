@@ -1,58 +1,143 @@
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
-import { Utensils, Footprints, Scan, Sparkles, Award, MapPin, Phone, CheckCircle, Circle, TrendingUp, Activity, Calendar, Clock, Moon, Sun } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Utensils, Footprints, Scan, Sparkles, Award, MapPin, Phone, CheckCircle, Circle, TrendingUp, Activity as ActivityIcon, Calendar, Clock, Moon, Sun, Loader2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import { AchievementsModal } from "./achievements-modal";
 import { PetScopeLogo } from "./petscope-logo";
 import { useDarkMode } from "./dark-mode-context";
+import { usePets } from "../hooks/useApi";
+import { useHealthScore } from "../hooks/useApi";
+import { useActivities } from "../hooks/useApi";
+import { useVeterinarians } from "../hooks/useApi";
+import { useDashboardStats } from "../hooks/useApi";
+import { ActivityType } from "../types/api";
 
 interface HomeDashboardCalmProps {
   onNavigate: (screen: string) => void;
 }
 
-const recentActivity = [
-  { type: "meal", time: "2h ago", description: "Morning meal logged" },
-  { type: "walk", time: "5h ago", description: "Walk — 1.2 mi" },
-  { type: "scan", time: "Yesterday", description: "Eye scan completed" },
-];
-
-const dailyGoals = [
-  { id: "feed", label: "Feed", completed: 2, target: 2, icon: Utensils },
-  { id: "walk", label: "Walk", completed: 1, target: 1, icon: Footprints },
-  { id: "scan", label: "Scan", completed: 0, target: 1, icon: Scan },
-];
-
-const milestones = [
-  { id: 1, title: "Dental Improvement", subtitle: "15% better than last month", value: "+15%", icon: TrendingUp },
-  { id: 2, title: "Activity Streak", subtitle: "14 consecutive days", value: "14d", icon: Activity },
-];
-
-const nearbyVets = [
-  { name: "Pawfect Care Veterinary", distance: "0.8 mi", rating: 4.9, phone: "(555) 123-4567" },
-  { name: "Happy Tails Animal Hospital", distance: "1.2 mi", rating: 4.8, phone: "(555) 234-5678" },
-];
-
 export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
   const [showAchievements, setShowAchievements] = useState(false);
-  const [healthScore, setHealthScore] = useState(0);
+  const [animatedHealthScore, setAnimatedHealthScore] = useState(0);
   const [hasNewScan, setHasNewScan] = useState(false);
-  const currentStreak = 14;
-  
+
+  // Fetch data from API
+  const { pets, loading: petsLoading } = usePets();
+  const currentPet = pets && pets.length > 0 ? pets[0] : null;
+
+  const { healthScore, loading: healthScoreLoading } = useHealthScore(currentPet?.id || "");
+  const { activities, loading: activitiesLoading } = useActivities(currentPet?.id || "");
+  const { veterinarians, loading: vetsLoading } = useVeterinarians();
+  const { stats, loading: statsLoading } = useDashboardStats();
+
   // Animate health score on mount
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setHealthScore(87);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
+    if (healthScore?.overall_score) {
+      const timer = setTimeout(() => {
+        setAnimatedHealthScore(Math.round(healthScore.overall_score));
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [healthScore]);
+
+  // Process activities for display
+  const recentActivity = useMemo(() => {
+    if (!activities || activities.length === 0) return [];
+
+    // Get last 3 activities
+    return activities.slice(0, 3).map(activity => {
+      const timeAgo = getTimeAgo(new Date(activity.timestamp));
+      return {
+        type: activity.type.toLowerCase(),
+        time: timeAgo,
+        description: activity.title,
+      };
+    });
+  }, [activities]);
+
+  // Calculate daily goals from activities
+  const dailyGoals = useMemo(() => {
+    if (!activities) return [
+      { id: "feed", label: "Feed", completed: 0, target: 2, icon: Utensils },
+      { id: "walk", label: "Walk", completed: 0, target: 1, icon: Footprints },
+      { id: "scan", label: "Scan", completed: 0, target: 1, icon: Scan },
+    ];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayActivities = activities.filter(a => {
+      const activityDate = new Date(a.timestamp);
+      activityDate.setHours(0, 0, 0, 0);
+      return activityDate.getTime() === today.getTime();
+    });
+
+    const mealCount = todayActivities.filter(a => a.type === ActivityType.MEAL).length;
+    const walkCount = todayActivities.filter(a => a.type === ActivityType.WALK).length;
+    const scanCount = todayActivities.filter(a => a.title.toLowerCase().includes('scan')).length;
+
+    return [
+      { id: "feed", label: "Feed", completed: mealCount, target: 2, icon: Utensils },
+      { id: "walk", label: "Walk", completed: walkCount, target: 1, icon: Footprints },
+      { id: "scan", label: "Scan", completed: scanCount, target: 1, icon: Scan },
+    ];
+  }, [activities]);
+
+  // Calculate milestones from stats
+  const milestones = useMemo(() => {
+    if (!stats && !activities) return [];
+
+    const streak = calculateActivityStreak(activities || []);
+
+    return [
+      { id: 1, title: "Dental Improvement", subtitle: "Keep up the good work", value: "✓", icon: TrendingUp },
+      { id: 2, title: "Activity Streak", subtitle: `${streak} consecutive days`, value: `${streak}d`, icon: ActivityIcon },
+    ];
+  }, [stats, activities]);
+
+  // Get nearby vets (limit to 2)
+  const nearbyVets = useMemo(() => {
+    if (!veterinarians || veterinarians.length === 0) return [];
+    return veterinarians.slice(0, 2).map(vet => ({
+      id: vet.id,
+      name: vet.clinic_name,
+      distance: calculateDistance(vet.latitude, vet.longitude),
+      rating: vet.rating || 0,
+      phone: vet.phone,
+    }));
+  }, [veterinarians]);
 
   // Calculate wellness ring progress based on daily goals
   const totalCompleted = dailyGoals.reduce((acc, goal) => acc + goal.completed, 0);
   const totalTargets = dailyGoals.reduce((acc, goal) => acc + goal.target, 0);
   const wellnessProgress = (totalCompleted / totalTargets) * 100;
   const circumference = 2 * Math.PI * 70;
+
+  // Show loading state
+  if (petsLoading) {
+    return (
+      <div className="min-h-full flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  // Show message if no pet
+  if (!currentPet) {
+    return (
+      <div className="min-h-full flex items-center justify-center p-6">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-2">No Pet Found</h2>
+          <p className="text-gray-600 mb-4">Please add a pet to get started</p>
+          <Button onClick={() => onNavigate("pet-profile-setup")}>Add Pet</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const userName = currentPet.name ? `Alex & ${currentPet.name}` : "Alex";
 
   return (
     <div className="min-h-full pb-3 relative overflow-hidden">
@@ -70,7 +155,7 @@ export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <p className={`${isDarkMode ? 'text-gray-700/70' : 'text-white/70'} mb-2 font-medium transition-colors`} style={{ fontSize: '16px', lineHeight: '24px' }}>
-              Welcome back, Alex & Cocoa 🐶
+              Welcome back, {userName} 🐶
             </p>
             <h1 
               className={`${isDarkMode ? 'text-gray-900' : 'text-white'} font-bold tracking-tight transition-colors`}
@@ -112,18 +197,24 @@ export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
                 {/* Pet Avatar */}
                 <div className="relative">
                   <div className="w-20 h-20 rounded-[12px] bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm flex items-center justify-center overflow-hidden border-2 border-white/40 shadow-lg">
-                    <img 
-                      src="https://images.unsplash.com/photo-1734966213753-1b361564bab4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnb2xkZW4lMjByZXRyaWV2ZXIlMjBkb2clMjBwb3J0cmFpdHxlbnwxfHx8fDE3NjEwMjUzNzV8MA&ixlib=rb-4.1.0&q=80&w=1080"
-                      alt="Cocoa"
-                      className="w-full h-full object-cover"
-                    />
+                    {currentPet.photo_url ? (
+                      <img
+                        src={currentPet.photo_url}
+                        alt={currentPet.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className={`${isDarkMode ? 'text-gray-700' : 'text-white'} text-3xl`}>🐶</div>
+                    )}
                   </div>
                 </div>
                 <div className="flex-1">
                   <h2 className={`${isDarkMode ? 'text-gray-900' : 'text-white'} mb-1 font-bold transition-colors`} style={{ fontSize: '20px', lineHeight: '28px' }}>
-                    Cocoa
+                    {currentPet.name}
                   </h2>
-                  <p className={`${isDarkMode ? 'text-gray-700/80' : 'text-white/80'} text-sm font-medium transition-colors`}>Golden Retriever • 5 years</p>
+                  <p className={`${isDarkMode ? 'text-gray-700/80' : 'text-white/80'} text-sm font-medium transition-colors`}>
+                    {currentPet.breed}{currentPet.age ? ` • ${currentPet.age} years` : ''}
+                  </p>
                 </div>
               </div>
 
@@ -166,8 +257,8 @@ export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
                     strokeLinecap="round"
                     strokeDasharray={circumference}
                     initial={{ strokeDashoffset: circumference }}
-                    animate={{ 
-                      strokeDashoffset: healthScore > 0 ? circumference - (healthScore / 100) * circumference : circumference
+                    animate={{
+                      strokeDashoffset: animatedHealthScore > 0 ? circumference - (animatedHealthScore / 100) * circumference : circumference
                     }}
                     transition={{ duration: 1, ease: "easeOut", delay: 0.5 }}
                   />
@@ -178,16 +269,16 @@ export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
                     </linearGradient>
                   </defs>
                 </svg>
-                
+
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <motion.div 
+                  <motion.div
                     className={`${isDarkMode ? 'text-gray-900' : 'text-white'} mb-1 font-bold transition-colors`}
                     style={{ fontSize: '48px', lineHeight: '56px' }}
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.6, delay: 1.2, ease: "easeOut" }}
                   >
-                    {healthScore}
+                    {animatedHealthScore || 0}
                   </motion.div>
                   <div className={`${isDarkMode ? 'text-gray-700/70' : 'text-white/70'} text-sm font-medium transition-colors`}>Health Score</div>
                 </div>
@@ -200,12 +291,17 @@ export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
                 transition={{ duration: 0.6, delay: 1.4 }}
                 className="text-center px-4 relative"
               >
-                <motion.p 
+                <motion.p
                   className={`${isDarkMode ? 'text-gray-700/80' : 'text-white/80'} text-sm font-medium leading-relaxed transition-colors`}
                   animate={{ opacity: [0.8, 1, 0.8] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  Cocoa's energy is trending higher this week 🐕✨
+                  {animatedHealthScore >= 80
+                    ? `${currentPet.name}'s energy is trending higher this week 🐕✨`
+                    : animatedHealthScore >= 60
+                    ? `${currentPet.name} is doing well. Keep it up! 🐕`
+                    : `Let's work on improving ${currentPet.name}'s health together 💪`
+                  }
                 </motion.p>
               </motion.div>
             </div>
@@ -416,10 +512,65 @@ export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
       </div>
 
       {/* Achievements Modal */}
-      <AchievementsModal 
-        isOpen={showAchievements} 
-        onClose={() => setShowAchievements(false)} 
+      <AchievementsModal
+        isOpen={showAchievements}
+        onClose={() => setShowAchievements(false)}
       />
     </div>
   );
+}
+
+// Utility functions
+function getTimeAgo(date: Date): string {
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (days > 0) {
+    if (days === 1) return "Yesterday";
+    return `${days}d ago`;
+  }
+  if (hours > 0) return `${hours}h ago`;
+  if (minutes > 0) return `${minutes}m ago`;
+  return "Just now";
+}
+
+function calculateActivityStreak(activities: any[]): number {
+  if (!activities || activities.length === 0) return 0;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let streak = 0;
+  let currentDate = new Date(today);
+
+  while (true) {
+    const hasActivityOnDay = activities.some(activity => {
+      const activityDate = new Date(activity.timestamp);
+      activityDate.setHours(0, 0, 0, 0);
+      return activityDate.getTime() === currentDate.getTime();
+    });
+
+    if (!hasActivityOnDay) break;
+
+    streak++;
+    currentDate.setDate(currentDate.getDate() - 1);
+
+    // Limit to reasonable streak length
+    if (streak > 365) break;
+  }
+
+  return streak;
+}
+
+function calculateDistance(lat?: number, lng?: number): string {
+  // For now, return a placeholder distance
+  // In production, this would calculate distance from user's location
+  if (!lat || !lng) return "N/A";
+
+  // Simulate distance calculation (random between 0.5 and 5 miles)
+  const distance = (Math.random() * 4.5 + 0.5).toFixed(1);
+  return `${distance} mi`;
 }

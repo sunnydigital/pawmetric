@@ -368,6 +368,41 @@ export function useVeterinarians(
   };
 }
 
+export function useVeterinarian(vetId: string) {
+  const { data, loading, error, setData, setLoading, setError } = useApiState<Veterinarian | null>(null);
+
+  const fetchVeterinarian = useCallback(async () => {
+    if (!vetId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await api.getVeterinarian(vetId);
+      if (response.success) {
+        setData(response.data.veterinarian);
+      } else {
+        throw new Error("Failed to fetch veterinarian");
+      }
+    } catch (err: any) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [vetId]);
+
+  useEffect(() => {
+    if (vetId) {
+      fetchVeterinarian();
+    }
+  }, [fetchVeterinarian, vetId]);
+
+  return {
+    veterinarian: data,
+    loading,
+    error,
+    fetchVeterinarian,
+  };
+}
+
 // =============================================================================
 // Chat Hook
 // =============================================================================
