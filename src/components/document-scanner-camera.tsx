@@ -52,11 +52,11 @@ export function DocumentScannerCamera({ onNavigate }: DocumentScannerCameraProps
         {/* Rectangle Scan Viewport */}
         <div className="relative">
           {/* Outer glow */}
-          <div className={`absolute inset-0 rounded-[32px] blur-xl ${scanning ? 'bg-[#34D399]/40' : 'bg-[#2563EB]/40'} animate-pulse`}></div>
+          <div className={`absolute inset-0 rounded-[31px] blur-xl ${scanning ? 'bg-[#34D399]/40' : 'bg-[#2563EB]/40'} animate-pulse`}></div>
 
           {/* Main rectangle */}
-          <div className={`relative w-80 h-96 rounded-[32px] border-4 ${scanning ? 'border-[#34D399]' : 'border-[#2563EB]'} flex items-center justify-center transition-all shadow-[0_0_60px_rgba(37,99,235,0.4)]`}>
-            <div className="w-full h-full rounded-[28px] bg-white/5 backdrop-blur-md flex items-center justify-center border border-white/10">
+          <div className={`relative w-72 h-80 rounded-[32px] border-4 ${scanning ? 'border-[#34D399]' : 'border-[#2563EB]'} flex items-center justify-center transition-all shadow-[0_0_60px_rgba(37,99,235,0.4)]`}>
+            <div className="w-64 h-72 rounded-[32px] bg-white/5 backdrop-blur-md flex items-center justify-center border border-white/10">
               {scanning ? (
                 <div className="text-center px-6">
                   <div className="w-20 h-20 mx-auto mb-6 rounded-full border-4 border-[#34D399] border-t-transparent animate-spin"></div>
@@ -97,27 +97,6 @@ export function DocumentScannerCamera({ onNavigate }: DocumentScannerCameraProps
 
       {/* Controls */}
       <div className="p-8 space-y-6">
-        {/* Document Category Selection */}
-        <div className="space-y-3">
-          <p className="text-white/70 text-sm text-center">Document Type</p>
-          <div className="grid grid-cols-4 gap-2">
-            {documentCategories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`p-3 rounded-[16px] border-2 transition-all ${
-                  selectedCategory === cat.id
-                    ? 'border-white bg-white/20 backdrop-blur-xl'
-                    : 'border-white/20 bg-transparent'
-                }`}
-              >
-                <div className="text-2xl mb-1">{cat.icon}</div>
-                <div className="text-white text-xs font-medium">{cat.label}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Capture Controls */}
         <div className="flex items-center justify-center gap-12">
           <Button

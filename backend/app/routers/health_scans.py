@@ -8,7 +8,7 @@ from datetime import datetime
 
 from app.database import get_db
 from app.models import User, Pet, HealthScan, HealthScore, ScanType, ScanStatus
-from app.schemas import HealthScanResponse
+from app.schemas import HealthScanResponse, HealthScoreResponse
 from app.auth import get_current_user
 from app.config import settings
 
@@ -108,7 +108,7 @@ async def create_health_scan(
 
     return {
         "success": True,
-        "data": {"health_scan": health_scan}
+        "data": {"health_scan": HealthScanResponse.model_validate(health_scan)}
     }
 
 
@@ -142,10 +142,11 @@ async def get_health_scans(
         query = query.filter(HealthScan.scan_type == scan_type)
 
     health_scans = query.order_by(HealthScan.scanned_at.desc()).limit(limit).all()
+    scans_data = [HealthScanResponse.model_validate(scan) for scan in health_scans]
 
     return {
         "success": True,
-        "data": {"health_scans": health_scans}
+        "data": {"scans": scans_data}
     }
 
 
@@ -181,7 +182,7 @@ async def get_health_score(
 
     return {
         "success": True,
-        "data": {"health_score": health_score}
+        "data": {"health_score": HealthScoreResponse.model_validate(health_score)}
     }
 
 
@@ -210,5 +211,5 @@ async def get_health_scan(
 
     return {
         "success": True,
-        "data": {"health_scan": health_scan}
+        "data": {"health_scan": HealthScanResponse.model_validate(health_scan)}
     }
