@@ -3,11 +3,13 @@ import { motion, AnimatePresence } from "motion/react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { ChevronLeft, ChevronRight, Check, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Sparkles, Loader2 } from "lucide-react";
 import { PetScopeLogo } from "./petscope-logo";
+import { api } from "../services/api";
 
 interface PetProfileSetupProps {
   onComplete: () => void;
+  onCancel?: () => void;
 }
 
 const petTypes = [
@@ -34,32 +36,63 @@ const healthFocusAreas = [
   { id: "general", label: "General Wellness", icon: "❤️" },
 ];
 
-export function PetProfileSetup({ onComplete }: PetProfileSetupProps) {
+export function PetProfileSetup({ onComplete, onCancel }: PetProfileSetupProps) {
   const [step, setStep] = useState(1);
   const [petType, setPetType] = useState("dog");
   const [breed, setBreed] = useState("");
-  const [name, setName] = useState("Max");
-  const [age, setAge] = useState("5");
-  const [weight, setWeight] = useState("65");
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [weight, setWeight] = useState("");
   const [healthFocus, setHealthFocus] = useState<string[]>(["general"]);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const totalSteps = 4;
   const progress = (step / totalSteps) * 100;
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
-      setShowSuccess(true);
-      setTimeout(() => {
-        onComplete();
-      }, 2500);
+      // Submit pet to API
+      setIsSubmitting(true);
+      setError("");
+
+      try {
+        const petData = {
+          name,
+          breed: breed || undefined,
+          age: age ? parseInt(age) : undefined,
+          weight: weight ? parseFloat(weight) : undefined,
+          gender: undefined, // Could add gender selection in the form
+          birthday: undefined,
+          microchip_id: undefined,
+        };
+
+        const response = await api.createPet(petData);
+
+        if (response.success) {
+          setShowSuccess(true);
+          setTimeout(() => {
+            onComplete();
+          }, 2500);
+        } else {
+          setError("Failed to create pet profile");
+          setIsSubmitting(false);
+        }
+      } catch (err: any) {
+        console.error("Error creating pet:", err);
+        setError(err.detail || err.message || "Failed to create pet profile");
+        setIsSubmitting(false);
+      }
     }
   };
 
   const handleBack = () => {
-    if (step > 1) {
+    if (step === 1 && onCancel) {
+      onCancel();
+    } else if (step > 1) {
       setStep(step - 1);
     }
   };
@@ -123,8 +156,7 @@ export function PetProfileSetup({ onComplete }: PetProfileSetupProps) {
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={handleBack}
-            disabled={step === 1}
-            className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/15 transition-all disabled:opacity-50"
+            className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center hover:bg-white/15 transition-all"
           >
             <ChevronLeft className="w-6 h-6 text-white" />
           </button>
@@ -146,7 +178,7 @@ export function PetProfileSetup({ onComplete }: PetProfileSetupProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-6 pb-6">
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
@@ -261,19 +293,19 @@ export function PetProfileSetup({ onComplete }: PetProfileSetupProps) {
                     <button
                       key={area.id}
                       onClick={() => toggleHealthFocus(area.id)}
-                      className={`p-6 rounded-[24px] border-2 transition-all ${
+                      className={`h-36 p-6 rounded-[24px] border-2 transition-all flex flex-col items-center justify-center ${
                         healthFocus.includes(area.id)
                           ? "bg-white/20 backdrop-blur-xl border-white/40"
                           : "bg-white/10 backdrop-blur-sm border-white/20"
                       }`}
                     >
-                      <div className="text-3xl mb-3">{area.icon}</div>
-                      <div className="text-white text-sm leading-tight">{area.label}</div>
-                      {healthFocus.includes(area.id) && (
-                        <div className="mt-3">
-                          <Check className="w-5 h-5 text-white mx-auto" />
-                        </div>
-                      )}
+                      <div className="text-3xl mb-2">{area.icon}</div>
+                      <div className="text-white text-sm leading-tight text-center">{area.label}</div>
+                      <div className="mt-2 h-6 flex items-center justify-center">
+                        {healthFocus.includes(area.id) && (
+                          <Check className="w-5 h-5 text-white" />
+                        )}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -285,12 +317,22 @@ export function PetProfileSetup({ onComplete }: PetProfileSetupProps) {
 
       {/* Bottom Button */}
       <div className="p-6 pt-4">
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-[20px]">
+            <p className="text-white text-sm text-center">{error}</p>
+          </div>
+        )}
         <Button
           onClick={handleNext}
-          disabled={!canProceed()}
+          disabled={!canProceed() || isSubmitting}
           className="w-full h-14 button-gradient text-white hover:bg-white/90 rounded-[100px] text-base disabled:opacity-50 font-medium transition-all hover:-translate-y-1"
         >
-          {step === totalSteps ? (
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              Creating Profile...
+            </>
+          ) : step === totalSteps ? (
             "Complete Setup"
           ) : (
             <>

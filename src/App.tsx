@@ -52,6 +52,7 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<Screen>("onboarding");
   const [activeTab, setActiveTab] = useState<MainTab>("home");
   const [scanParams, setScanParams] = useState<any>({});
+  const [previousScreen, setPreviousScreen] = useState<Screen>("home");
 
   // Check authentication status and redirect if needed
   useEffect(() => {
@@ -66,6 +67,10 @@ function AppContent() {
   const handleNavigate = (screen: string, params?: any) => {
     if (params) {
       setScanParams(params);
+    }
+    // Track previous screen before navigating to pet-setup
+    if (screen === "pet-setup") {
+      setPreviousScreen(currentScreen);
     }
     setCurrentScreen(screen as Screen);
   };
@@ -236,12 +241,14 @@ function AppContent() {
             )}
             {currentScreen === "login" && (
               <AuthScreen
-                onComplete={() => setCurrentScreen("pet-setup")}
+                onComplete={() => setCurrentScreen("home")}
+                onRegisterComplete={() => setCurrentScreen("pet-setup")}
               />
             )}
             {currentScreen === "pet-setup" && (
               <PetProfileSetup
                 onComplete={() => setCurrentScreen("home")}
+                onCancel={() => setCurrentScreen(previousScreen)}
               />
             )}
             {currentScreen === "home" && (

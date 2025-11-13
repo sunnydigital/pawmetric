@@ -1,11 +1,12 @@
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
-import { Utensils, Footprints, Scan, Sparkles, Award, MapPin, Phone, CheckCircle, Circle, TrendingUp, Activity as ActivityIcon, Calendar, Clock, Moon, Sun, Loader2 } from "lucide-react";
+import { Utensils, Footprints, Scan, Sparkles, Award, MapPin, Phone, CheckCircle, Circle, TrendingUp, Activity as ActivityIcon, Calendar, Clock, Moon, Sun, Loader2, User } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import { AchievementsModal } from "./achievements-modal";
 import { PetScopeLogo } from "./petscope-logo";
 import { useDarkMode } from "./dark-mode-context";
+import { useAuth } from "../contexts/AuthContext";
 import { usePets } from "../hooks/useApi";
 import { useHealthScore } from "../hooks/useApi";
 import { useActivities } from "../hooks/useApi";
@@ -19,13 +20,15 @@ interface HomeDashboardCalmProps {
 
 export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
+  const { user } = useAuth();
   const [showAchievements, setShowAchievements] = useState(false);
   const [animatedHealthScore, setAnimatedHealthScore] = useState(0);
   const [hasNewScan, setHasNewScan] = useState(false);
+  const [selectedPetIndex, setSelectedPetIndex] = useState(0);
 
   // Fetch data from API
   const { pets, loading: petsLoading } = usePets();
-  const currentPet = pets && pets.length > 0 ? pets[0] : null;
+  const currentPet = pets && pets.length > 0 ? pets[selectedPetIndex] : null;
 
   const { healthScore, loading: healthScoreLoading } = useHealthScore(currentPet?.id || "");
   const { activities, loading: activitiesLoading } = useActivities(currentPet?.id || "");
@@ -118,8 +121,8 @@ export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
   // Show loading state
   if (petsLoading) {
     return (
-      <div className="min-h-full flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      <div className="min-h-full gradient-bg flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-white" />
       </div>
     );
   }
@@ -127,17 +130,42 @@ export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
   // Show message if no pet
   if (!currentPet) {
     return (
-      <div className="min-h-full flex items-center justify-center p-6">
-        <div className="text-center">
-          <h2 className="text-xl font-bold mb-2">No Pet Found</h2>
-          <p className="text-gray-600 mb-4">Please add a pet to get started</p>
-          <Button onClick={() => onNavigate("pet-profile-setup")}>Add Pet</Button>
+      <div className="min-h-full gradient-bg relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-1/4 right-10 w-40 h-40 rounded-full border-4 border-white animate-pulse"></div>
+          <div className="absolute bottom-1/4 left-10 w-32 h-32 rounded-full border-4 border-white animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+        </div>
+
+        <div className="relative z-10 flex items-center justify-center min-h-full p-6">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="text-center max-w-md"
+          >
+            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
+              <User className="w-12 h-12 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-3">Welcome to PetScope!</h2>
+            <p className="text-white/80 mb-6 leading-relaxed">
+              Get started by adding your first pet to begin tracking their health and wellness
+            </p>
+            <Button
+              onClick={() => onNavigate("pet-setup")}
+              className="bg-white text-[#2563EB] hover:bg-white/90 h-14 px-8 rounded-[100px] text-base font-medium shadow-xl"
+            >
+              Add Your First Pet
+            </Button>
+          </motion.div>
         </div>
       </div>
     );
   }
 
-  const userName = currentPet.name ? `Alex & ${currentPet.name}` : "Alex";
+  // Get user's first name
+  const userFirstName = user?.name?.split(' ')[0] || 'there';
+  const userName = currentPet?.name ? `${userFirstName} & ${currentPet.name}` : userFirstName;
 
   return (
     <div className="min-h-full pb-3 relative overflow-hidden">
@@ -148,8 +176,8 @@ export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
         {/* Hero Section with Pet Card */}
         <div className="px-6 pt-20">
           {/* Welcome Text - on 4pt grid */}
-          <motion.div 
-            className="mb-8"
+          <motion.div
+            className="mb-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -157,13 +185,46 @@ export function HomeDashboardCalm({ onNavigate }: HomeDashboardCalmProps) {
             <p className={`${isDarkMode ? 'text-gray-700/70' : 'text-white/70'} mb-2 font-medium transition-colors`} style={{ fontSize: '16px', lineHeight: '24px' }}>
               Welcome back, {userName} 🐶
             </p>
-            <h1 
+            <h1
               className={`${isDarkMode ? 'text-gray-900' : 'text-white'} font-bold tracking-tight transition-colors`}
               style={{ fontSize: '28px', lineHeight: '36px' }}
             >
               Health Dashboard
             </h1>
           </motion.div>
+
+          {/* Pet Selector - Show only if multiple pets */}
+          {pets && pets.length > 1 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25 }}
+              className="mb-6 flex gap-3 overflow-x-auto scrollbar-hide pb-2"
+            >
+              {pets.map((pet, index) => (
+                <button
+                  key={pet.id}
+                  onClick={() => setSelectedPetIndex(index)}
+                  className={`flex-shrink-0 px-4 py-2 rounded-[20px] border-2 transition-all ${
+                    index === selectedPetIndex
+                      ? isDarkMode
+                        ? 'bg-white/20 border-gray-900/40 backdrop-blur-xl'
+                        : 'bg-white/20 border-white/40 backdrop-blur-xl'
+                      : isDarkMode
+                        ? 'bg-white/5 border-gray-900/20 backdrop-blur-sm'
+                        : 'bg-white/5 border-white/20 backdrop-blur-sm'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`text-lg`}>{pet.photo_url ? '🐕' : '🐕'}</div>
+                    <span className={`${isDarkMode ? 'text-gray-900' : 'text-white'} text-sm font-medium`}>
+                      {pet.name}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </motion.div>
+          )}
 
           {/* Pet Profile Card - Living Glass Surface */}
           <motion.div

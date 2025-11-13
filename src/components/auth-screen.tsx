@@ -10,7 +10,11 @@ interface AuthScreenProps {
   onComplete: () => void;
 }
 
-export function AuthScreen({ onComplete }: AuthScreenProps) {
+interface AuthScreenPropsExtended extends AuthScreenProps {
+  onRegisterComplete?: () => void;
+}
+
+export function AuthScreen({ onComplete, onRegisterComplete }: AuthScreenPropsExtended) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,20 +31,25 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
 
     try {
       if (isLogin) {
-        // Login
+        // Login - go to home
         await login({ email, password });
+        onComplete();
       } else {
-        // Register
+        // Register - go to pet profile setup
         if (!name.trim()) {
           setError("Name is required");
           setIsLoading(false);
           return;
         }
         await register({ email, password, name });
-      }
 
-      // Success! Move to next screen
-      onComplete();
+        // After registration, go to pet setup if handler provided, otherwise home
+        if (onRegisterComplete) {
+          onRegisterComplete();
+        } else {
+          onComplete();
+        }
+      }
     } catch (err: any) {
       setError(err.message || `Failed to ${isLogin ? "login" : "register"}`);
     } finally {
@@ -49,14 +58,14 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
   };
 
   return (
-    <div className="h-full gradient-bg relative overflow-hidden">
+    <div className="min-h-full h-full gradient-bg relative overflow-hidden flex flex-col">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-1/4 right-10 w-40 h-40 rounded-full border-4 border-white animate-pulse"></div>
         <div className="absolute bottom-1/4 left-10 w-32 h-32 rounded-full border-4 border-white animate-pulse" style={{ animationDelay: '1.5s' }}></div>
       </div>
 
-      <div className="relative z-10 h-full flex flex-col p-8">
+      <div className="relative z-10 flex-1 flex flex-col p-8 justify-between">
         {/* Logo & Header */}
         <div className="flex-1 flex flex-col items-center justify-center">
           <motion.div

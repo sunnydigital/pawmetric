@@ -43,7 +43,7 @@ async def create_pet(
 
     return {
         "success": True,
-        "data": {"pet": new_pet}
+        "data": {"pet": PetResponse.model_validate(new_pet)}
     }
 
 
@@ -55,9 +55,12 @@ async def get_pets(
     """Get all pets for the current user"""
     pets = db.query(Pet).filter(Pet.user_id == current_user.id).all()
 
+    # Convert to PetResponse objects
+    pets_data = [PetResponse.model_validate(pet) for pet in pets]
+
     return {
         "success": True,
-        "data": {"pets": pets}
+        "data": {"pets": pets_data}
     }
 
 
@@ -84,7 +87,7 @@ async def get_pet(
 
     return {
         "success": True,
-        "data": {"pet": pet}
+        "data": {"pet": PetResponse.model_validate(pet)}
     }
 
 
@@ -120,7 +123,7 @@ async def update_pet(
 
     return {
         "success": True,
-        "data": {"pet": pet}
+        "data": {"pet": PetResponse.model_validate(pet)}
     }
 
 
@@ -192,5 +195,5 @@ async def upload_pet_photo(
 
     return {
         "success": True,
-        "data": {"pet": pet}
+        "data": {"pet": PetResponse.model_validate(pet)}
     }

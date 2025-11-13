@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta
 from typing import Optional
 import hashlib
+import base64
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -11,45 +12,63 @@ from app.config import settings
 from app.database import get_db
 from app.models import User
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # HTTP Bearer token
 security = HTTPBearer()
 
 
-def _pre_hash_password(password: str) -> str:
-    """Pre-hash password with SHA256 to handle bcrypt's 72-byte limit"""
-    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+def _pre_hash_password(password: str) -> bytes:
+    """Pre-hash password with SHA256 to handle bcrypt's 72-byte limit
+
+    Uses base64 encoding to keep the result under 72 bytes (44 chars for base64 of 32 bytes)
+    Returns bytes ready for bcrypt
+    """
+    hash_bytes = hashlib.sha256(password.encode('utf-8')).digest()
+    return base64.b64encode(hash_bytes)
 
 
 def hash_password(password: str) -> str:
     """Hash a password using SHA256 + bcrypt"""
     pre_hashed = _pre_hash_password(password)
-    return pwd_context.hash(pre_hashed)
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pre_hashed, salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash
 
-    Supports both new (SHA256 pre-hashed) and old (direct) password formats
-    for backward compatibility with existing user passwords.
+    Supports multiple password formats for backward compatibility:
+    1. New format: SHA256 (base64) + bcrypt
+    2. Old format: SHA256 (hexdigest) + bcrypt
+    3. Legacy format: Direct bcrypt (for very old passwords)
     """
-    # Try new method first (SHA256 pre-hashed)
+    hashed_bytes = hashed_password.encode('utf-8')
+
+    # Try new method first (SHA256 base64 pre-hashed)
     try:
         pre_hashed = _pre_hash_password(plain_password)
-        if pwd_context.verify(pre_hashed, hashed_password):
+        if bcrypt.checkpw(pre_hashed, hashed_bytes):
             return True
     except (ValueError, Exception):
-        # If new method fails, fall through to try old method
+        # If new method fails, fall through to try old methods
         pass
 
-    # Fall back to old method (direct password) for backward compatibility
+    # Try old hexdigest method (for passwords created before this fix)
+    try:
+        pre_hashed_hex = hashlib.sha256(plain_password.encode('utf-8')).hexdigest().encode('utf-8')
+        if bcrypt.checkpw(pre_hashed_hex, hashed_bytes):
+            return True
+    except (ValueError, Exception):
+        pass
+
+    # Fall back to direct password method for very old passwords
     # This handles passwords that were hashed before the SHA256 pre-hashing fix
     try:
         # Only try if password is within bcrypt's 72-byte limit
-        if len(plain_password.encode('utf-8')) <= 72:
-            return pwd_context.verify(plain_password, hashed_password)
+        password_bytes = plain_password.encode('utf-8')
+        if len(password_bytes) <= 72:
+            if bcrypt.checkpw(password_bytes, hashed_bytes):
+                return True
     except (ValueError, Exception):
         pass
 

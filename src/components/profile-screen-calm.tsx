@@ -1,33 +1,42 @@
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { motion } from "motion/react";
-import { 
-  User, 
-  Bell, 
-  Shield, 
-  HelpCircle, 
+import {
+  User,
+  Bell,
+  Shield,
+  HelpCircle,
   LogOut,
   ChevronRight,
   Crown,
   Settings,
   Scan,
   Award,
-  Edit
+  Edit,
+  Loader2
 } from "lucide-react";
 import { Switch } from "./ui/switch";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { usePets } from "../hooks/useApi";
+import { api } from "../services/api";
 
 interface ProfileScreenCalmProps {
   onNavigate: (screen: string) => void;
 }
 
-const settingsSections = [
+const getSettingsSections = (petName?: string, petBreed?: string, petAge?: number) => [
   {
     id: "pet",
     title: "Pet Profile",
     icon: User,
     items: [
-      { label: "Max's Details", value: "Golden Retriever • 5 years", action: "edit" },
+      {
+        label: petName ? `${petName}'s Details` : "Pet Details",
+        value: petName ? `${petBreed || 'Unknown breed'} • ${petAge || 0} years` : "No pet added",
+        action: "edit"
+      },
+      { label: "Add Another Pet", value: undefined, action: "add-pet" },
       { label: "Health Focus Areas", value: "Dental, General Wellness", action: "edit" },
     ],
   },
@@ -64,15 +73,93 @@ const settingsSections = [
 ];
 
 export function ProfileScreenCalm({ onNavigate }: ProfileScreenCalmProps) {
+  const { user, logout } = useAuth();
+  const { pets, loading: petsLoading } = usePets();
+  const [selectedPetIndex, setSelectedPetIndex] = useState(0);
   const [toggleStates, setToggleStates] = useState({
     push: true,
     email: false,
     sms: true,
   });
+  const [totalScans, setTotalScans] = useState(0);
+  const [avgScore, setAvgScore] = useState(0);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   const handleToggle = (key: string) => {
     setToggleStates(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
   };
+
+  // Get selected pet
+  const primaryPet = pets && pets.length > 0 ? pets[selectedPetIndex] : null;
+
+  // Get user initials
+  const userInitials = useMemo(() => {
+    if (!user?.name) return "U";
+    const names = user.name.split(" ");
+    if (names.length >= 2) {
+      return `${names[0][0]}${names[1][0]}`.toUpperCase();
+    }
+    return user.name.substring(0, 2).toUpperCase();
+  }, [user]);
+
+  // Fetch stats for all pets
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!pets || pets.length === 0) {
+        setLoadingStats(false);
+        return;
+      }
+
+      try {
+        let totalScansCount = 0;
+        let totalScoreSum = 0;
+        let petsWithScores = 0;
+
+        for (const pet of pets) {
+          try {
+            // Fetch scans for this pet
+            const scansResponse = await api.getHealthScans(pet.id);
+            if (scansResponse.success && scansResponse.data.scans) {
+              totalScansCount += scansResponse.data.scans.length;
+            }
+
+            // Fetch health score for this pet
+            const scoreResponse = await api.getHealthScore(pet.id);
+            if (scoreResponse.success && scoreResponse.data.health_score) {
+              totalScoreSum += scoreResponse.data.health_score.overall_score;
+              petsWithScores++;
+            }
+          } catch (error) {
+            console.error(`Error fetching stats for pet ${pet.id}:`, error);
+          }
+        }
+
+        setTotalScans(totalScansCount);
+        setAvgScore(petsWithScores > 0 ? Math.round(totalScoreSum / petsWithScores) : 0);
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, [pets]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      onNavigate("login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  // Get settings sections with dynamic pet data
+  const settingsSections = useMemo(() =>
+    getSettingsSections(primaryPet?.name, primaryPet?.breed, primaryPet?.age),
+    [primaryPet]
+  );
 
   return (
     <div className="min-h-full gradient-bg pb-4">
@@ -95,15 +182,15 @@ export function ProfileScreenCalm({ onNavigate }: ProfileScreenCalmProps) {
             {/* User Avatar */}
             <div className="relative">
               <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 shadow-xl">
-                <div className="text-white text-2xl">JD</div>
+                <div className="text-white text-2xl">{userInitials}</div>
               </div>
               <button className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white text-[#2563EB] flex items-center justify-center shadow-lg hover:scale-110 transition-all">
                 <Edit className="w-4 h-4" />
               </button>
             </div>
             <div className="flex-1">
-              <h2 className="text-white mb-1">John Doe</h2>
-              <p className="text-white/80 text-sm">john.doe@email.com</p>
+              <h2 className="text-white mb-1">{user?.name || "User"}</h2>
+              <p className="text-white/80 text-sm">{user?.email || ""}</p>
             </div>
           </div>
 
@@ -112,32 +199,71 @@ export function ProfileScreenCalm({ onNavigate }: ProfileScreenCalmProps) {
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <User className="w-4 h-4 text-white/70" />
-                <div className="text-2xl text-white">1</div>
+                {petsLoading ? (
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                ) : (
+                  <div className="text-2xl text-white">{pets?.length || 0}</div>
+                )}
               </div>
               <div className="text-xs text-white/70">Pets</div>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Scan className="w-4 h-4 text-white/70" />
-                <div className="text-2xl text-white">24</div>
+                {loadingStats ? (
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                ) : (
+                  <div className="text-2xl text-white">{totalScans}</div>
+                )}
               </div>
               <div className="text-xs text-white/70">Scans</div>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Award className="w-4 h-4 text-white/70" />
-                <div className="text-2xl text-white">87</div>
+                {loadingStats ? (
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                ) : (
+                  <div className="text-2xl text-white">{avgScore}</div>
+                )}
               </div>
               <div className="text-xs text-white/70">Avg Score</div>
             </div>
           </div>
         </motion.div>
 
+        {/* Pet Switcher - Only show if multiple pets */}
+        {pets && pets.length > 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="flex gap-3 overflow-x-auto scrollbar-hide pb-2"
+          >
+            {pets.map((pet, index) => (
+              <button
+                key={pet.id}
+                onClick={() => setSelectedPetIndex(index)}
+                className={`flex-shrink-0 px-4 py-2 rounded-[20px] border-2 transition-all ${
+                  index === selectedPetIndex
+                    ? "bg-white/20 backdrop-blur-xl border-white/40"
+                    : "bg-white/5 backdrop-blur-sm border-white/20"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="text-lg">🐕</div>
+                  <span className="text-white text-sm font-medium">{pet.name}</span>
+                </div>
+              </button>
+            ))}
+          </motion.div>
+        )}
+
         {/* Premium Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
+          transition={{ duration: 0.5, delay: pets && pets.length > 1 ? 0.15 : 0.1 }}
           className="p-6 bg-gradient-to-br from-amber-500 to-orange-600 rounded-[32px] shadow-2xl border-2 border-amber-400/50"
         >
           <div className="flex items-start gap-4">
@@ -172,13 +298,19 @@ export function ProfileScreenCalm({ onNavigate }: ProfileScreenCalmProps) {
               </h3>
               <div className="bg-white/15 backdrop-blur-xl border border-white/20 rounded-[24px] overflow-hidden">
                 {section.items.map((item, index) => (
-                  <div
+                  <button
                     key={index}
-                    className={`p-4 flex items-center justify-between ${
+                    onClick={() => {
+                      if (item.action === "add-pet") {
+                        onNavigate("pet-setup");
+                      }
+                    }}
+                    disabled={!item.action || (item.action !== "add-pet")}
+                    className={`w-full p-4 flex items-center justify-between ${
                       index !== section.items.length - 1 ? "border-b border-white/10" : ""
-                    }`}
+                    } ${item.action === "add-pet" ? "hover:bg-white/10 cursor-pointer" : "cursor-default"} transition-colors`}
                   >
-                    <div className="flex-1">
+                    <div className="flex-1 text-left">
                       <h4 className={`text-white text-sm mb-1 ${item.danger ? "text-red-300" : ""}`}>
                         {item.label}
                       </h4>
@@ -206,11 +338,11 @@ export function ProfileScreenCalm({ onNavigate }: ProfileScreenCalmProps) {
                             )
                           }
                         />
-                      ) : item.action === "edit" || item.action === "view" ? (
+                      ) : item.action === "edit" || item.action === "view" || item.action === "add-pet" ? (
                         <ChevronRight className="w-5 h-5 text-white/60" />
                       ) : null}
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </motion.div>
@@ -222,6 +354,7 @@ export function ProfileScreenCalm({ onNavigate }: ProfileScreenCalmProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
+          onClick={handleLogout}
           className="w-full h-14 bg-white/10 backdrop-blur-xl border border-white/20 text-white rounded-[24px] flex items-center justify-center gap-2 hover:bg-white/15 transition-all"
         >
           <LogOut className="w-5 h-5" />

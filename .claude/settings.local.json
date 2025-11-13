@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python update_passwords.py:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
